@@ -1,0 +1,58 @@
+{
+    "name": "peso/mnb-service",
+    "type": "library",
+    "description": "Hungarian National Bank data provider for Peso",
+    "keywords": ["currency", "exchange", "conversion", "phpeso", "peso", "mnb", "hungarian national bank"],
+    "homepage": "https://phpeso.readthedocs.io/",
+    "license": "MIT",
+    "authors": [{
+        "name": "Anton Smirnov",
+        "role": "developer",
+        "homepage": "https://sandfox.me/",
+        "email": "sandfox+phpeso@sandfox.me"
+    }],
+    "support": {
+        "issues": "https://github.com/phpeso/mnb-service/issues",
+        "source": "https://github.com/phpeso/mnb-service",
+        "docs": "https://phpeso.readthedocs.io/"
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "php-http/discovery": true
+        },
+        "sort-packages": true
+    },
+    "autoload": {
+        "psr-4": {
+            "Peso\\Services\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Peso\\Services\\Tests\\": "tests"
+        }
+    },
+    "require": {
+        "php": "^8.2",
+        "arokettu/system-clock": "^2.0",
+        "peso/core": "^1.1",
+        "phpro/soap-client": "^4.5",
+        "psr/clock": "^1.0",
+        "psr/http-client": "^1.0",
+        "psr/http-factory": "^1.1",
+        "psr/simple-cache": "^1 || ^2 || ^3"
+    },
+    "require-dev": {
+        "arokettu/clock": "^2.7",
+        "guzzlehttp/guzzle": "^7.9",
+        "php-http/discovery": "^1.20",
+        "php-http/mock-client": "^1.6",
+        "phpunit/phpunit": "^11.5",
+        "psy/psysh": "*",
+        "sandfox.dev/code-standard": "^1.2025.09.17",
+        "squizlabs/php_codesniffer": "*",
+        "symfony/cache": "^7.3",
+        "vimeo/psalm": "^6.12"
+    }
+}

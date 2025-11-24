@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<ruleset>
+    <rule ref="SandFox_PHP82"/>
+    <file>src</file>
+    <file>tests</file>
+</ruleset>

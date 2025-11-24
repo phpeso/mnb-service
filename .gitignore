@@ -1,0 +1,13 @@
+# ide
+/.idea
+
+# composer
+/vendor
+/composer.lock
+
+# debug
+/debug
+
+# tests
+/reports
+/.phpunit.result.cache
