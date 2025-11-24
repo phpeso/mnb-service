@@ -25,7 +25,8 @@
     },
     "autoload": {
         "psr-4": {
-            "Peso\\Services\\": "src"
+            "Peso\\Services\\": "src",
+            "Peso\\Services\\HungarianNationalBank\\SOAP\\": "generated"
         }
     },
     "autoload-dev": {
@@ -37,7 +38,7 @@
         "php": "^8.2",
         "arokettu/system-clock": "^2.0",
         "peso/core": "^1.1",
-        "phpro/soap-client": "^4.5",
+        "phpro/soap-client": "^4.2",
         "psr/clock": "^1.0",
         "psr/http-client": "^1.0",
         "psr/http-factory": "^1.1",
