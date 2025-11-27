@@ -21,8 +21,18 @@ final class BadSoap extends SoapClient
         // ignore
     }
 
+    private function throwError(string $method): never
+    {
+        throw new \SoapFault('ERR', 'Some SOAP fault in ' . $method);
+    }
+
     public function GetCurrentExchangeRates(): never
     {
-        throw new \SoapFault('ERR', 'Some SOAP fault...');
+        $this->throwError(__FUNCTION__);
+    }
+
+    public function GetExchangeRates(array $params): never
+    {
+        $this->throwError(__FUNCTION__);
     }
 }

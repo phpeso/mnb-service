@@ -73,7 +73,7 @@ final class CurrentRatesTest extends TestCase
         $service = new HungarianNationalBankService(cache: $cache, soap: $soap);
 
         self::expectException(HttpFailureException::class);
-        self::expectExceptionMessage('SOAP error: Some SOAP fault...');
+        self::expectExceptionMessage('SOAP error: Some SOAP fault in GetCurrentExchangeRates');
         $service->send(new CurrentExchangeRateRequest('EUR', 'HUF'));
     }
 }

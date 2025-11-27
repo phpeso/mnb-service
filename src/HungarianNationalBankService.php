@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace Peso\Services;
 
+use Arokettu\Clock\SystemClock;
 use Arokettu\Date\Calendar;
 use Arokettu\Date\Date;
 use DateInterval;
@@ -24,7 +25,9 @@ use Peso\Core\Services\SDK\Cache\NullCache;
 use Peso\Core\Services\SDK\Exceptions\HttpFailureException;
 use Peso\Core\Services\SDK\HTTP\UserAgentHelper;
 use Peso\Core\Types\Decimal;
+use Peso\Services\HungarianNationalBankService\RateDiscoveryException;
 use Peso\Services\HungarianNationalBankService\XML\ExchangeRates;
+use Psr\Clock\ClockInterface;
 use Psr\SimpleCache\CacheInterface;
 use Sabre\Xml\Reader;
 use SoapClient;
@@ -39,6 +42,7 @@ final readonly class HungarianNationalBankService implements PesoServiceInterfac
         private DateInterval $ttl = new DateInterval('PT1H'),
         SoapClient|null $soap = null,
         array $soapOptions = [],
+        private ClockInterface $clock = new SystemClock(),
     ) {
         $this->soap = $soap ?? new SoapClient('https://www.mnb.hu/arfolyamok.asmx?singleWsdl', [
             'user_agent' => UserAgentHelper::buildUserAgentString(
@@ -113,6 +117,15 @@ final readonly class HungarianNationalBankService implements PesoServiceInterfac
             return new ErrorResponse(ExchangeRateNotFoundException::fromRequest($request));
         }
 
+        // future
+        if ($request->date->compare(Calendar::fromDateTime($this->clock->now())) > 0) {
+            return new ErrorResponse(ExchangeRateNotFoundException::fromRequest($request));
+        }
+        // first record
+        if ($request->date->compare(Calendar::parse('1949-01-03')) < 0) {
+            return new ErrorResponse(ExchangeRateNotFoundException::fromRequest($request));
+        }
+
         $cacheKeyBase = "peso|mnb|{$request->baseCurrency}|";
 
         // read cache for
@@ -125,6 +138,7 @@ final readonly class HungarianNationalBankService implements PesoServiceInterfac
             // build cache
             if ($value === null) {
                 $retrieved = $this->fillCache($date, $request->baseCurrency);
+                $value = $retrieved[$ymd] ?? false;
             }
             if ($value === false) {
                 $date = $date->subDays(1);
@@ -132,6 +146,10 @@ final readonly class HungarianNationalBankService implements PesoServiceInterfac
             }
             // found
             break;
+        }
+
+        if (!$value) {
+            throw new RateDiscoveryException('No rate found in the response');
         }
 
         [$rate, $per] = $value;

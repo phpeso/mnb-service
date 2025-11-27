@@ -36,4 +36,14 @@ final class MockSoap extends SoapClient
         $object->GetCurrentExchangeRatesResult = file_get_contents(__DIR__ . '/../data/current.xml');
         return $object;
     }
+
+    public function GetExchangeRates(array $params): stdClass
+    {
+        ++$this->requests;
+        $object = new stdClass();
+        $object->GetExchangeRatesResult = file_get_contents(
+            __DIR__ . "/../data/{$params['startDate']}_{$params['endDate']}_{$params['currencyNames']}.xml",
+        );
+        return $object;
+    }
 }
