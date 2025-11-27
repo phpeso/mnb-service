@@ -13,7 +13,6 @@ use Arokettu\Clock\SystemClock;
 use Arokettu\Date\Calendar;
 use Arokettu\Date\Date;
 use DateInterval;
-use Error;
 use Peso\Core\Exceptions\ExchangeRateNotFoundException;
 use Peso\Core\Exceptions\RequestNotSupportedException;
 use Peso\Core\Helpers\Calculator;
@@ -22,6 +21,7 @@ use Peso\Core\Requests\HistoricalExchangeRateRequest;
 use Peso\Core\Responses\ErrorResponse;
 use Peso\Core\Responses\ExchangeRateResponse;
 use Peso\Core\Services\PesoServiceInterface;
+use Peso\Core\Services\ReversibleService;
 use Peso\Core\Services\SDK\Cache\NullCache;
 use Peso\Core\Services\SDK\Exceptions\HttpFailureException;
 use Peso\Core\Services\SDK\HTTP\UserAgentHelper;
@@ -53,6 +53,16 @@ final readonly class HungarianNationalBankService implements PesoServiceInterfac
             'keep_alive' => false,
             ...$soapOptions,
         ]);
+    }
+
+    public static function reversible(
+        CacheInterface $cache = new NullCache(),
+        DateInterval $ttl = new DateInterval('PT1H'),
+        SoapClient|null $soap = null,
+        array $soapOptions = [],
+        ClockInterface $clock = new SystemClock(),
+    ): PesoServiceInterface {
+        return new ReversibleService(new self($cache, $ttl, $soap, $soapOptions, $clock));
     }
 
     public function send(object $request): ExchangeRateResponse|ErrorResponse
