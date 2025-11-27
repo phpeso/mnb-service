@@ -36,6 +36,7 @@
     "require": {
         "php": "^8.2",
         "ext-soap": "*",
+        "arokettu/date": "^2.4",
         "peso/core": "^1.1",
         "psr/simple-cache": "^1 || ^2 || ^3",
         "sabre/xml": "^4.0"

@@ -15,7 +15,7 @@ use Sabre\Xml\XmlDeserializable;
 /**
  * @internal
  */
-final readonly class MNBCurrentExchangeRates implements XmlDeserializable
+final readonly class ExchangeRates implements XmlDeserializable
 {
     public static function xmlDeserialize(Reader $reader): array
     {

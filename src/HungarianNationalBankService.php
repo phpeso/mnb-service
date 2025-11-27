@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Peso\Services;
 
 use Arokettu\Date\Calendar;
+use Arokettu\Date\Date;
 use DateInterval;
 use Peso\Core\Exceptions\ExchangeRateNotFoundException;
 use Peso\Core\Exceptions\RequestNotSupportedException;
@@ -23,7 +24,7 @@ use Peso\Core\Services\SDK\Cache\NullCache;
 use Peso\Core\Services\SDK\Exceptions\HttpFailureException;
 use Peso\Core\Services\SDK\HTTP\UserAgentHelper;
 use Peso\Core\Types\Decimal;
-use Peso\Services\HungarianNationalBankService\XML\MNBCurrentExchangeRates;
+use Peso\Services\HungarianNationalBankService\XML\ExchangeRates;
 use Psr\SimpleCache\CacheInterface;
 use Sabre\Xml\Reader;
 use SoapClient;
@@ -55,6 +56,9 @@ final readonly class HungarianNationalBankService implements PesoServiceInterfac
         if ($request instanceof CurrentExchangeRateRequest) {
             return $this->performCurrentRequest($request);
         }
+        if ($request instanceof HistoricalExchangeRateRequest) {
+            return $this->performHistoricalRequest($request);
+        }
         return new ErrorResponse(RequestNotSupportedException::fromRequest($request));
     }
 
@@ -75,7 +79,7 @@ final readonly class HungarianNationalBankService implements PesoServiceInterfac
             }
             $reader = new Reader();
             $reader->elementMap = [
-                '{}MNBCurrentExchangeRates' => MNBCurrentExchangeRates::class,
+                '{}MNBCurrentExchangeRates' => ExchangeRates::class,
             ];
             $reader->XML($ratesXml->GetCurrentExchangeRatesResult);
 
@@ -102,9 +106,88 @@ final readonly class HungarianNationalBankService implements PesoServiceInterfac
         return new ExchangeRateResponse($rateObj, Calendar::parse($day));
     }
 
+    private function performHistoricalRequest(
+        HistoricalExchangeRateRequest $request,
+    ): ErrorResponse|ExchangeRateResponse {
+        if ($request->quoteCurrency !== 'HUF') {
+            return new ErrorResponse(ExchangeRateNotFoundException::fromRequest($request));
+        }
+
+        $cacheKeyBase = "peso|mnb|{$request->baseCurrency}|";
+
+        // read cache for
+        $date = $request->date;
+        $retrieved = [];
+        // check 5 consecutive days (there may be 4 days off in a row)
+        for ($i = 0; $i < 5; $i++) {
+            $ymd = $date->toString();
+            $value = $retrieved[$ymd] ?? $this->cache->get($cacheKeyBase . $ymd); // find value in retrieved or cached
+            // build cache
+            if ($value === null) {
+                $retrieved = $this->fillCache($date, $request->baseCurrency);
+            }
+            if ($value === false) {
+                $date = $date->subDays(1);
+                continue;
+            }
+            // found
+            break;
+        }
+
+        [$rate, $per] = $value;
+
+        $rateObj = new Decimal($rate);
+        if ($per !== '1') {
+            $calc = Calculator::instance();
+            $mul = $calc->trimZeros($calc->invert(new Decimal($per)));
+            $rateObj = $calc->multiply($rateObj, $mul);
+        }
+        return new ExchangeRateResponse($rateObj, $date);
+    }
+
+    private function fillCache(Date $date, string $currency): array
+    {
+        $cacheKeyBase = "peso|mnb|{$currency}|";
+
+        try {
+            // get 5 days (there may be 4 consecutive days off)
+            $ratesXml = $this->soap->GetExchangeRates([
+                'startDate' => $date->subDays(4)->toString(),
+                'endDate' => $date->toString(),
+                'currencyNames' => $currency,
+            ]);
+        } catch (SoapFault $e) {
+            throw new HttpFailureException('SOAP error: ' . $e->getMessage(), previous: $e);
+        }
+        $reader = new Reader();
+        $reader->elementMap = [
+            '{}MNBExchangeRates' => ExchangeRates::class,
+        ];
+        $reader->XML($ratesXml->GetExchangeRatesResult);
+
+        $data = $reader->parse()['value'];
+
+        $values = [];
+        $dateStore = $date;
+
+        // store days as separate cache entries
+        for ($i = 0; $i < 5; $i++) {
+            $ymd = $dateStore->toString();
+            $dateValues = $data[$ymd][$currency] ?? false; // false means see day earlier
+            $cacheKey = $cacheKeyBase . $ymd;
+
+            $this->cache->set($cacheKey, $dateValues, $this->ttl);
+            $values[$ymd] = $dateValues;
+
+            $dateStore = $dateStore->subDays(1);
+        }
+
+        return $values;
+    }
+
     public function supports(object $request): bool
     {
-        return ($request instanceof CurrentExchangeRateRequest /*|| $request instanceof HistoricalExchangeRateRequest*/)
+        return ($request instanceof CurrentExchangeRateRequest || $request instanceof HistoricalExchangeRateRequest)
             && $request->quoteCurrency === 'HUF';
     }
 }
