@@ -2,7 +2,5 @@
 <ruleset>
     <rule ref="SandFox_PHP82"/>
     <file>src</file>
-    <file>generated</file>
-    <file>config</file>
     <file>tests</file>
 </ruleset>
