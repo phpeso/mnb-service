@@ -27,7 +27,7 @@ final readonly class ExchangeRates implements XmlDeserializable
             if ($element['name'] === '{}Day') {
                 $day = [];
 
-                foreach ($element['value'] as $inner) {
+                foreach ($element['value'] ?? [] as $inner) {
                     if ($inner['name'] === '{}Rate') {
                         $day[$inner['attributes']['curr']] = [
                             str_replace(',', '.', $inner['value']),

@@ -9,8 +9,10 @@ declare(strict_types=1);
 
 namespace Peso\Services\Tests;
 
+use Arokettu\Clock\StaticClock;
 use Arokettu\Date\Calendar;
 use Arokettu\Date\Date;
+use Peso\Core\Exceptions\ExchangeRateNotFoundException;
 use Peso\Core\Requests\HistoricalExchangeRateRequest;
 use Peso\Core\Responses\ErrorResponse;
 use Peso\Core\Responses\ExchangeRateResponse;
@@ -29,7 +31,6 @@ final class HistoricalRatesTest extends TestCase
         $cache = new Psr16Cache(new ArrayAdapter());
         $soap = new MockSoap();
         $date = Calendar::parse('2025-11-26');
-//        $discoveredDate = Calendar::parse('2023-12-26');
 
         $service = new HungarianNationalBankService(cache: $cache, soap: $soap);
 
@@ -85,23 +86,30 @@ final class HistoricalRatesTest extends TestCase
         self::assertEquals(3, $soap->getRequests());
     }
 
-//    public function testNoRate(): void
-//    {
-//        $cache = new Psr16Cache(new ArrayAdapter());
-//        $soap = new MockSoap();
-//
-//        $service = new HungarianNationalBankService(cache: $cache, soap: $soap);
-//
-//        // unknown currency
-//        $response = $service->send(new CurrentExchangeRateRequest('KZT', 'HUF'));
-//        self::assertInstanceOf(ErrorResponse::class, $response);
-//        self::assertEquals('Unable to find exchange rate for KZT/HUF', $response->exception->getMessage());
-//
-//        // reverse rate
-//        $response = $service->send(new CurrentExchangeRateRequest('HUF', 'USD'));
-//        self::assertInstanceOf(ErrorResponse::class, $response);
-//        self::assertEquals('Unable to find exchange rate for HUF/USD', $response->exception->getMessage());
-//    }
+    public function testNoRate(): void
+    {
+        $cache = new Psr16Cache(new ArrayAdapter());
+        $soap = new MockSoap();
+        $date = Calendar::parse('2025-11-26');
+
+        $service = new HungarianNationalBankService(cache: $cache, soap: $soap);
+
+        // unknown currency
+        $response = $service->send(new HistoricalExchangeRateRequest('KZT', 'HUF', $date));
+        self::assertInstanceOf(ErrorResponse::class, $response);
+        self::assertEquals(
+            'Unable to find exchange rate for KZT/HUF on 2025-11-26',
+            $response->exception->getMessage(),
+        );
+
+        // reverse rate
+        $response = $service->send(new HistoricalExchangeRateRequest('HUF', 'USD', $date));
+        self::assertInstanceOf(ErrorResponse::class, $response);
+        self::assertEquals(
+            'Unable to find exchange rate for HUF/USD on 2025-11-26',
+            $response->exception->getMessage(),
+        );
+    }
 
     public function testSoapFault(): void
     {
@@ -113,5 +121,32 @@ final class HistoricalRatesTest extends TestCase
         self::expectException(HttpFailureException::class);
         self::expectExceptionMessage('SOAP error: Some SOAP fault in GetExchangeRates');
         $service->send(new HistoricalExchangeRateRequest('EUR', 'HUF', Date::today()));
+    }
+
+    public function testInvalidDateRange(): void
+    {
+        $cache = new Psr16Cache(new ArrayAdapter());
+        $soap = new MockSoap();
+        $clock = StaticClock::fromDateString('2025-11-27');
+
+        $service = new HungarianNationalBankService(cache: $cache, soap: $soap, clock: $clock);
+
+        $past = Calendar::parse('1946-06-07');
+        $response = $service->send(new HistoricalExchangeRateRequest('EUR', 'HUF', $past));
+        self::assertInstanceOf(ErrorResponse::class, $response);
+        self::assertInstanceOf(ExchangeRateNotFoundException::class, $response->exception);
+        self::assertEquals(
+            'Unable to find exchange rate for EUR/HUF on 1946-06-07',
+            $response->exception->getMessage(),
+        );
+
+        $future = Calendar::parse('2025-11-28');
+        $response = $service->send(new HistoricalExchangeRateRequest('EUR', 'HUF', $future));
+        self::assertInstanceOf(ErrorResponse::class, $response);
+        self::assertInstanceOf(ExchangeRateNotFoundException::class, $response->exception);
+        self::assertEquals(
+            'Unable to find exchange rate for EUR/HUF on 2025-11-28',
+            $response->exception->getMessage(),
+        );
     }
 }

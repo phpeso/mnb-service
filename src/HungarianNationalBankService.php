@@ -13,6 +13,7 @@ use Arokettu\Clock\SystemClock;
 use Arokettu\Date\Calendar;
 use Arokettu\Date\Date;
 use DateInterval;
+use Error;
 use Peso\Core\Exceptions\ExchangeRateNotFoundException;
 use Peso\Core\Exceptions\RequestNotSupportedException;
 use Peso\Core\Helpers\Calculator;
@@ -25,7 +26,6 @@ use Peso\Core\Services\SDK\Cache\NullCache;
 use Peso\Core\Services\SDK\Exceptions\HttpFailureException;
 use Peso\Core\Services\SDK\HTTP\UserAgentHelper;
 use Peso\Core\Types\Decimal;
-use Peso\Services\HungarianNationalBankService\RateDiscoveryException;
 use Peso\Services\HungarianNationalBankService\XML\ExchangeRates;
 use Psr\Clock\ClockInterface;
 use Psr\SimpleCache\CacheInterface;
@@ -148,8 +148,8 @@ final readonly class HungarianNationalBankService implements PesoServiceInterfac
             break;
         }
 
-        if (!$value) {
-            throw new RateDiscoveryException('No rate found in the response');
+        if ($value === false) {
+            return new ErrorResponse(ExchangeRateNotFoundException::fromRequest($request));
         }
 
         [$rate, $per] = $value;
