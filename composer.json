@@ -1,4 +1,5 @@
 {
+    "$schema": "https://getcomposer.org/schema.json",
     "name": "peso/mnb-service",
     "type": "library",
     "description": "Hungarian National Bank data provider for Peso",
